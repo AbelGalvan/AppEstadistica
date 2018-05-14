@@ -1,5 +1,7 @@
 #include <windows.h>
 #include <CommCtrl.h>
+#include <stdlib.h>
+#include <math.h>
 #include "resource.h"
 
 const char g_szClassName[] = "myWindowClass";
@@ -18,6 +20,45 @@ LPSTR itoa(int val, int base) {
 	for (; val && i; --i, val /= base)
 		buf[i] = "0123456789abcdef"[val % base];
 	return &buf[i + 1];
+}
+
+int atoi(LPSTR texto) {
+	int num = 0, lim = strlen(texto);
+	for (int i = 0; i < lim; i++) {
+		switch (texto[i]) {
+		case '1':
+			num = num * 10 + 1;
+			break;
+		case '2':
+			num = num * 10 + 2;
+			break;
+		case '3':
+			num = num * 10 + 3;
+			break;
+		case '4':
+			num = num * 10 + 4;
+			break;
+		case '5':
+			num = num * 10 + 5;
+			break;
+		case '6':
+			num = num * 10 + 6;
+			break;
+		case '7':
+			num = num * 10 + 7;
+			break;
+		case '8':
+			num = num * 10 + 8;
+			break;
+		case '9':
+			num = num * 10 + 9;
+			break;
+		case '0':
+			num = num * 10;
+			break;
+		}
+	}
+	return num;
 }
 
 BOOL putAListBox(HWND hListbox, LPSTR strin){
@@ -117,6 +158,7 @@ BOOL LoadTextFileToList(HWND hList, LPCTSTR pszFileName){
 	}
 	return bSuccess;
 }
+
 //Falta corregir
 BOOL SaveTextFileFromEdit(HWND hEdit, LPCTSTR pszFileName){
 	HANDLE hFile;
@@ -127,7 +169,6 @@ BOOL SaveTextFileFromEdit(HWND hEdit, LPCTSTR pszFileName){
 	if (hFile != INVALID_HANDLE_VALUE)
 	{
 		DWORD dwTextLength;
-
 		dwTextLength = GetWindowTextLength(hEdit);
 		// No need to bother if there's no text.
 		if (dwTextLength > 0)
@@ -211,7 +252,7 @@ HWND CreateNewMDIChild(HWND hMDIClient){
 	mcs.x = CW_USEDEFAULT;
 	mcs.y = CW_USEDEFAULT;
 	mcs.cx = 410;
-	mcs.cy = 350;
+	mcs.cy = 380;
 	mcs.style = MDIS_ALLCHILDSTYLES;
 	
 	hChild = (HWND)SendMessage(hMDIClient, WM_MDICREATE, 0, (LONG)&mcs);
@@ -269,14 +310,14 @@ LRESULT CALLBACK MDIChildWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
 		HFONT hfDefault;
 		HWND hEdit, hListbox, hButtonAdd, hButtonDel;
 		HWND hBtnProm, hTextProm, hBtnMediana, hTextMediana, hBtnModa, hTextModa, hBtnDAM, hTextDAM,
-			hBtnVarianza, hTextVarianza, hBtnStandard, hTextStandard;
+			hBtnVarianza, hTextVarianza, hBtnStandard, hTextStandard, hBtnGrafica;
 
 		hfDefault = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
 		
 		//Create ListBox Control
 		hListbox = CreateWindowEx(0, "LISTBOX", "",
 			WS_CHILD | WS_VISIBLE | LBS_NOINTEGRALHEIGHT | LBS_EXTENDEDSEL | WS_TABSTOP,
-			10, 10, 150, 280, hwnd, (HMENU)IDC_LISTBOX_EDIT, GetModuleHandle(NULL), NULL);
+			10, 10, 150, 315, hwnd, (HMENU)IDC_LISTBOX_EDIT, GetModuleHandle(NULL), NULL);
 		if (hListbox == NULL)
 			MessageBox(hwnd, "Puede que no se haya creado la lista", "Error", MB_OK | MB_ICONERROR);
 		SendMessage(hListbox, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
@@ -401,6 +442,14 @@ LRESULT CALLBACK MDIChildWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
 			MessageBox(hwnd, "Puede que no se haya creado la etiqueta Standard", "Error", MB_OK | MB_ICONERROR);
 		SendMessage(hTextStandard, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
 
+		//Create Button Grafica de Cuartiles
+		hBtnGrafica = CreateWindowEx(0, "BUTTON", "Grafica d/Cuartiles",
+			WS_CHILD | WS_VISIBLE | BS_CENTER | WS_TABSTOP,
+			170, 300, 100, 25, hwnd, (HMENU)IDC_BUTTON_GRAFICA, GetModuleHandle(NULL), NULL);
+		if (hBtnGrafica == NULL)
+			MessageBox(hwnd, "Puede que no se haya creado el button Standard", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(hBtnGrafica, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
 		if (dataEditDialog != NULL) {
 			//Se envian los datos del dialogo al ListBox
 			putAListBox(hListbox, dataEditDialog);
@@ -451,17 +500,17 @@ LRESULT CALLBACK MDIChildWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
 
 			HWND hEdit;
 			DWORD dwTextLength;
-			
+
 			hEdit = GetDlgItem(hwnd, IDC_EDITBOX);
 			dwTextLength = GetWindowTextLength(hEdit);
 			// No need to bother if there's no text.
-			if (dwTextLength > 0){
+			if (dwTextLength > 0) {
 				LPSTR pszText;
 				DWORD dwBufferSize = dwTextLength + 1;
 
 				pszText = (LPSTR)GlobalAlloc(GPTR, dwBufferSize);
-				if (pszText != NULL){
-					if (GetWindowText(hEdit, pszText, dwBufferSize)){
+				if (pszText != NULL) {
+					if (GetWindowText(hEdit, pszText, dwBufferSize)) {
 						SendDlgItemMessage(hwnd, IDC_LISTBOX_EDIT, LB_ADDSTRING, 0, (LPARAM)pszText);
 					}
 					GlobalFree(pszText);
@@ -472,8 +521,8 @@ LRESULT CALLBACK MDIChildWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
 			// When the user clicks the Remove button, we first get the number of selected items
 			HWND hList = GetDlgItem(hwnd, IDC_LISTBOX_EDIT);
 			int count = SendMessage(hList, LB_GETSELCOUNT, 0, 0);
-			if (count != LB_ERR){
-				if (count != 0){
+			if (count != LB_ERR) {
+				if (count != 0) {
 					// And then allocate room to store the list of selected items.
 					int i;
 					int *buf = (int*)GlobalAlloc(GPTR, sizeof(int) * count);
@@ -483,10 +532,12 @@ LRESULT CALLBACK MDIChildWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
 					for (i = count - 1; i >= 0; i--)
 						SendMessage(hList, LB_DELETESTRING, (WPARAM)buf[i], 0);
 					GlobalFree(buf);
-				}else{
+				}
+				else {
 					MessageBox(hwnd, "Items no seleccionado", "Warning", MB_OK);
 				}
-			}else{
+			}
+			else {
 				MessageBox(hwnd, "Error contando items :(", "Warning", MB_OK);
 			}
 		}break;
@@ -494,71 +545,197 @@ LRESULT CALLBACK MDIChildWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
 			HWND hList = GetDlgItem(hwnd, IDC_LISTBOX_EDIT);
 			int all = SendMessage(hList, LB_GETCOUNT, 0, 0);
 			if (all != LB_ERR) {
-				SendMessage(hList, LB_SELITEMRANGEEX, 0, (LPARAM)all);
-				int count = SendMessage(hList, LB_GETSELCOUNT, 0, 0);
-				if (count != LB_ERR) {
-					if (count != 0) {
-						// And then allocate room to store the list of selected items.
-						int i;
-						int *buf = (int*)GlobalAlloc(GPTR, sizeof(int) * count);
-						SendMessage(hList, LB_GETSELITEMS, (WPARAM)count, (LPARAM)buf);
-						// Now we loop through the list and remove each item that was selected.  
-						float total=0;
-						for (i = count - 1; i >= 0; i--) {
-							int range = SendMessage(hList, LB_GETTEXTLEN, (WPARAM)i, 0);
-							LPSTR dato = (LPSTR)GlobalAlloc(GPTR, range+1);
-							SendMessage(hList, LB_GETTEXT, (WPARAM)buf[i], (LPARAM)dato);
-							int num = 0, lim = strlen(dato);
-							for (int i = 0; i < lim; i++) {
-								switch (dato[i]) {
-								case '1':
-									num = num * 10 + 1;
-									break;
-								case '2':
-									num = num * 10 + 2;
-									break;
-								case '3':
-									num = num * 10 + 3;
-									break;
-								case '4':
-									num = num * 10 + 4;
-									break;
-								case '5':
-									num = num * 10 + 5;
-									break;
-								case '6':
-									num = num * 10 + 6;
-									break;
-								case '7':
-									num = num * 10 + 7;
-									break;
-								case '8':
-									num = num * 10 + 8;
-									break;
-								case '9':
-									num = num * 10 + 9;
-									break;
-								case '0':
-									num = num * 10;
-									break;
-								}
-							}
-							total = total + num;
-							GlobalFree(dato);
-						}
-						GlobalFree(buf);
-						float count2 = count;
-						float prom = total / count2;
-						LPSTR stri = itoa(prom, 10);
-						SetDlgItemText(hwnd, IDC_TEXT_PROM, stri);
-					}else {
-						MessageBox(hwnd, "Items no seleccionado", "Warning", MB_OK);
-					}
-				}else {
-					MessageBox(hwnd, "Error contando items :(", "Warning", MB_OK);
+				float total = 0;
+				for (int i = 0; i < all; i++) {
+					int range = SendMessage(hList, LB_GETTEXTLEN, (WPARAM)i, 0);
+					LPSTR text = (LPSTR)GlobalAlloc(GPTR, range + 1);
+					SendMessage(hList, LB_GETTEXT, (WPARAM)i, (LPARAM)text);
+					int num = atoi(text);
+					total += num;
+					GlobalFree(text);
 				}
-				SendMessage(hList, LB_SELITEMRANGEEX, all, 0);
-			}else{
+				float promedio = total / all;
+				LPSTR stri = itoa(promedio, 10);
+				SetDlgItemText(hwnd, IDC_TEXT_PROM, stri);
+			}
+			else {
+				MessageBox(hwnd, "Error select items", "Warning", MB_OK);
+			}
+		}break;
+		case IDC_BUTTON_MEDIANA: {
+			HWND hList = GetDlgItem(hwnd, IDC_LISTBOX_EDIT);
+			int all = SendMessage(hList, LB_GETCOUNT, 0, 0);
+			if (all != LB_ERR) {
+				int arreglo[255] = { 0 };
+				for (int i = 0; i < all; i++) {
+					int range = SendMessage(hList, LB_GETTEXTLEN, (WPARAM)i, 0);
+					LPSTR text = (LPSTR)GlobalAlloc(GPTR, range + 1);
+					SendMessage(hList, LB_GETTEXT, (WPARAM)i, (LPARAM)text);
+					int num = atoi(text);
+					GlobalFree(text);
+					arreglo[i] = num;
+				}
+				for (int i = 0; i < all; i++) {
+					for (int j = all - 1; j >= i; j--) {
+						if (arreglo[j] > arreglo[j + 1]) {
+							int temp = arreglo[j];
+							arreglo[j] = arreglo[j + 1];
+							arreglo[j + 1] = temp;
+						}
+					}
+				}
+				if (all % 2 == 1) {
+					int mitad = ((all - 1) / 2) + 1;
+					int range = SendMessage(hList, LB_GETTEXTLEN, (WPARAM)mitad - 1, 0);
+					LPSTR text = (LPSTR)GlobalAlloc(GPTR, range + 1);
+					SendMessage(hList, LB_GETTEXT, (WPARAM)mitad - 1, (LPARAM)text);
+					SetDlgItemText(hwnd, IDC_TEXT_MEDIANA, text);
+					GlobalFree(text);
+				}
+				else {
+					int mitad = all / 2;
+					int range = SendMessage(hList, LB_GETTEXTLEN, (WPARAM)mitad - 1, 0);
+					LPSTR text = (LPSTR)GlobalAlloc(GPTR, range + 1);
+					SendMessage(hList, LB_GETTEXT, (WPARAM)mitad - 1, (LPARAM)text);
+					int num1 = atoi(text);
+					GlobalFree(text);
+					range = SendMessage(hList, LB_GETTEXTLEN, (WPARAM)mitad, 0);
+					text = (LPSTR)GlobalAlloc(GPTR, range + 1);
+					SendMessage(hList, LB_GETTEXT, (WPARAM)mitad, (LPARAM)text);
+					int num2 = atoi(text);
+					GlobalFree(text);
+					int mediana = (num1 + num2) / 2;
+					SetDlgItemInt(hwnd, IDC_TEXT_MEDIANA, mediana, false);
+				}
+			}
+			else {
+				MessageBox(hwnd, "Error select items", "Warning", MB_OK);
+			}
+		}break;
+		case IDC_BUTTON_MODA: {
+			HWND hList = GetDlgItem(hwnd, IDC_LISTBOX_EDIT);
+			int all = SendMessage(hList, LB_GETCOUNT, 0, 0);
+			if (all != LB_ERR) {
+				int repeMaximas = 0, aidi = 0, repetidas;
+				for (int i = 0; i < all; i++) {
+					int range = SendMessage(hList, LB_GETTEXTLEN, (WPARAM)i, 0);
+					LPSTR text = (LPSTR)GlobalAlloc(GPTR, range + 1);
+					SendMessage(hList, LB_GETTEXT, (WPARAM)i, (LPARAM)text);
+					int num1 = atoi(text);
+					repetidas = 0;
+					for (int j = i; j < all; j++) {
+						range = SendMessage(hList, LB_GETTEXTLEN, (WPARAM)j, 0);
+						LPSTR text2 = (LPSTR)GlobalAlloc(GPTR, range + 1);
+						SendMessage(hList, LB_GETTEXT, (WPARAM)j, (LPARAM)text2);
+						int num2 = atoi(text2);
+						if (num1 == num2)
+							repetidas++;
+						GlobalFree(text2);
+					}
+					GlobalFree(text);
+					if (repetidas > repeMaximas) {
+						repeMaximas = repetidas;
+						aidi = i;
+					}
+				}
+				int range = SendMessage(hList, LB_GETTEXTLEN, (WPARAM)aidi, 0);
+				LPSTR text = (LPSTR)GlobalAlloc(GPTR, range + 1);
+				SendMessage(hList, LB_GETTEXT, (WPARAM)aidi, (LPARAM)text);
+				SetDlgItemText(hwnd, IDC_TEXT_MODA, text);
+				GlobalFree(text);
+			}
+			else {
+				MessageBox(hwnd, "Error select items", "Warning", MB_OK);
+			}
+		}break;
+		case IDC_BUTTON_DAM: {
+			HWND hList = GetDlgItem(hwnd, IDC_LISTBOX_EDIT);
+			int all = SendMessage(hList, LB_GETCOUNT, 0, 0);
+			if (all != LB_ERR) {
+				float total = 0;
+				for (int i = 0; i < all; i++) {
+					int range = SendMessage(hList, LB_GETTEXTLEN, (WPARAM)i, 0);
+					LPSTR text = (LPSTR)GlobalAlloc(GPTR, range + 1);
+					SendMessage(hList, LB_GETTEXT, (WPARAM)i, (LPARAM)text);
+					float num = atoi(text);
+					total += num;
+					GlobalFree(text);
+				}
+				float promedio = total / all;
+				int da = 0;
+				for (int i = 0; i < all; i++) {
+					int range = SendMessage(hList, LB_GETTEXTLEN, (WPARAM)i, 0);
+					LPSTR text = (LPSTR)GlobalAlloc(GPTR, range + 1);
+					SendMessage(hList, LB_GETTEXT, (WPARAM)i, (LPARAM)text);
+					float num = atoi(text);
+					int result = num - promedio;
+					float absoluto = abs(result);
+					da += absoluto;
+				}
+				float dam = da / all;
+				SetDlgItemInt(hwnd, IDC_TEXT_DAM, dam, false);
+			}
+			else {
+				MessageBox(hwnd, "Error select items", "Warning", MB_OK);
+			}
+		}break;
+		case IDC_BUTTON_VARIANZA: {
+			HWND hList = GetDlgItem(hwnd, IDC_LISTBOX_EDIT);
+			int all = SendMessage(hList, LB_GETCOUNT, 0, 0);
+			if (all != LB_ERR) {
+				float total = 0;
+				for (int i = 0; i < all; i++) {
+					int range = SendMessage(hList, LB_GETTEXTLEN, (WPARAM)i, 0);
+					LPSTR text = (LPSTR)GlobalAlloc(GPTR, range + 1);
+					SendMessage(hList, LB_GETTEXT, (WPARAM)i, (LPARAM)text);
+					float num = atoi(text);
+					total += num;
+					GlobalFree(text);
+				}
+				float promedio = total / all;
+				int var = 0;
+				for (int i = 0; i < all; i++) {
+					int range = SendMessage(hList, LB_GETTEXTLEN, (WPARAM)i, 0);
+					LPSTR text = (LPSTR)GlobalAlloc(GPTR, range + 1);
+					SendMessage(hList, LB_GETTEXT, (WPARAM)i, (LPARAM)text);
+					float num = atoi(text);
+					float result = pow(num - promedio, 2);
+					var += result;
+				}
+				float varianza = var / all;
+				SetDlgItemInt(hwnd, IDC_TEXT_VARIANZA, varianza, false);
+			}
+			else {
+				MessageBox(hwnd, "Error select items", "Warning", MB_OK);
+			}
+		}break;
+		case IDC_BUTTON_STANDARD: {
+			HWND hList = GetDlgItem(hwnd, IDC_LISTBOX_EDIT);
+			int all = SendMessage(hList, LB_GETCOUNT, 0, 0);
+			if (all != LB_ERR) {
+				float total = 0;
+				for (int i = 0; i < all; i++) {
+					int range = SendMessage(hList, LB_GETTEXTLEN, (WPARAM)i, 0);
+					LPSTR text = (LPSTR)GlobalAlloc(GPTR, range + 1);
+					SendMessage(hList, LB_GETTEXT, (WPARAM)i, (LPARAM)text);
+					float num = atoi(text);
+					total += num;
+					GlobalFree(text);
+				}
+				float promedio = total / all;
+				int var = 0;
+				for (int i = 0; i < all; i++) {
+					int range = SendMessage(hList, LB_GETTEXTLEN, (WPARAM)i, 0);
+					LPSTR text = (LPSTR)GlobalAlloc(GPTR, range + 1);
+					SendMessage(hList, LB_GETTEXT, (WPARAM)i, (LPARAM)text);
+					float num = atoi(text);
+					float result = pow(num - promedio, 2);
+					var += result;
+				}
+				float desviacion = pow(var / all, 0.5);
+				SetDlgItemInt(hwnd, IDC_TEXT_STANDARD, desviacion, false);
+			}
+			else {
 				MessageBox(hwnd, "Error select items", "Warning", MB_OK);
 			}
 		}break;
@@ -610,6 +787,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam){
 			{
 				SendMessage(hChild, WM_CLOSE, 0, 0);
 			}
+		}break;
+		case IDC_BUTTON_GRAFICA: {
+			//Codigo para la ventana Grafica de los datos (Creada en el MDI)
+
+
+
+
 		}break;
 		case ID_OPCIONES_CASCADA:
 			SendMessage(g_hMDIClient, WM_MDICASCADE, 0, 0);
