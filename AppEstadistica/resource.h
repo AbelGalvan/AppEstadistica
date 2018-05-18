@@ -7,11 +7,11 @@
 
 #define ID_ARCHIVO_NUEVO                1001
 #define ID_ARCHIVO_ABRIR                1002
-#define ID_ARCHIVO_GUARDAR				1003
-#define ID_ARCHIVO_CERRAR               1004
-#define ID_ARCHIVO_CERRARTODO			1005
-#define ID_SALIR						1006
+#define ID_ARCHIVO_CERRAR               1003
+#define ID_ARCHIVO_CERRARTODO			1004
+#define ID_SALIR						1005
 #define ID_OPCIONES_CASCADA				2001
+#define ID_OPCIONES_GRAFICA				2002
 
 #define IDC_EDITBOX					101
 #define IDC_BUTTON_ADD				102
@@ -29,7 +29,6 @@
 #define IDC_TEXT_VARIANZA			114
 #define IDC_BUTTON_STANDARD			115
 #define IDC_TEXT_STANDARD			116
-#define IDC_BUTTON_GRAFICA			117
 
 #define ID_DIALOG_OPEN					3001
 #define IDC_EDIT_DATOS					3002

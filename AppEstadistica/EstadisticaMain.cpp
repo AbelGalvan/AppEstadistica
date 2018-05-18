@@ -5,10 +5,13 @@
 #include "resource.h"
 
 const char g_szClassName[] = "myWindowClass";
-const char g_szChildClassName[] = "myChildrenClass";
+char g_szChildClassName[] = "myChildrenClass";
+char g_szGraficClassName[] = "myGraficClass";
 
 HWND g_hMDIClient = NULL;
 HWND g_hMainWindow = NULL;
+HWND hListGlobal = NULL;
+
 LPSTR dataEditDialog = NULL;
 
 #define IDC_MAIN_MDI		101
@@ -159,41 +162,6 @@ BOOL LoadTextFileToList(HWND hList, LPCTSTR pszFileName){
 	return bSuccess;
 }
 
-//Falta corregir
-BOOL SaveTextFileFromEdit(HWND hEdit, LPCTSTR pszFileName){
-	HANDLE hFile;
-	BOOL bSuccess = FALSE;
-
-	hFile = CreateFile(pszFileName, GENERIC_WRITE, 0, NULL,
-		CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-	if (hFile != INVALID_HANDLE_VALUE)
-	{
-		DWORD dwTextLength;
-		dwTextLength = GetWindowTextLength(hEdit);
-		// No need to bother if there's no text.
-		if (dwTextLength > 0)
-		{
-			LPSTR pszText;
-			DWORD dwBufferSize = dwTextLength + 1;
-
-			pszText = (LPSTR)GlobalAlloc(GPTR, dwBufferSize);
-			if (pszText != NULL)
-			{
-				if (GetWindowText(hEdit, pszText, dwBufferSize))
-				{
-					DWORD dwWritten;
-
-					if (WriteFile(hFile, pszText, dwTextLength, &dwWritten, NULL))
-						bSuccess = TRUE;
-				}
-				GlobalFree(pszText);
-			}
-		}
-		CloseHandle(hFile);
-	}
-	return bSuccess;
-}
-
 void DoFileOpen(HWND hwnd){
 	OPENFILENAME ofn;
 	char szFileName[MAX_PATH] = "";
@@ -217,43 +185,32 @@ void DoFileOpen(HWND hwnd){
 		}
 	}
 }
-//Falta corregir
-void DoFileSave(HWND hwnd){
-	OPENFILENAME ofn;
-	char szFileName[MAX_PATH] = "";
 
-	ZeroMemory(&ofn, sizeof(ofn));
+HWND CreateNewMDIChild(HWND hMDIClient, int tipo){
 
-	ofn.lStructSize = sizeof(ofn);
-	ofn.hwndOwner = hwnd;
-	ofn.lpstrFilter = "Text Files (*.txt)\0*.txt\0All Files (*.*)\0*.*\0";
-	ofn.lpstrFile = szFileName;
-	ofn.nMaxFile = MAX_PATH;
-	ofn.lpstrDefExt = "txt";
-	ofn.Flags = OFN_EXPLORER | OFN_PATHMUSTEXIST | OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT;
-
-	if (GetSaveFileName(&ofn))
-	{
-		HWND hEdit = GetDlgItem(hwnd, IDC_EDITBOX);
-		if (SaveTextFileFromEdit(hEdit, szFileName))
-		{
-			SetWindowText(hwnd, szFileName);
-		}
-	}
-}
-
-HWND CreateNewMDIChild(HWND hMDIClient){
 	MDICREATESTRUCT mcs;
 	HWND hChild;
 	
-	mcs.szTitle = "Nuevo archivo";
-	mcs.szClass = g_szChildClassName;
-	mcs.hOwner = GetModuleHandle(NULL);
-	mcs.x = CW_USEDEFAULT;
-	mcs.y = CW_USEDEFAULT;
-	mcs.cx = 410;
-	mcs.cy = 380;
-	mcs.style = MDIS_ALLCHILDSTYLES;
+	if (1==tipo) {
+		mcs.szTitle = "Nuevo archivo";
+		mcs.szClass = g_szChildClassName;
+		mcs.hOwner = GetModuleHandle(NULL);
+		mcs.x = CW_USEDEFAULT;
+		mcs.y = CW_USEDEFAULT;
+		mcs.cx = 410;
+		mcs.cy = 380;
+		mcs.style = MDIS_ALLCHILDSTYLES;
+	}
+	else if (2==tipo) {
+		mcs.szTitle = "Diagrama de Bigotes";
+		mcs.szClass = g_szGraficClassName;
+		mcs.hOwner = GetModuleHandle(NULL);
+		mcs.x = CW_USEDEFAULT;
+		mcs.y = CW_USEDEFAULT;
+		mcs.cx = 410;
+		mcs.cy = 380;
+		mcs.style = MDIS_ALLCHILDSTYLES;
+	}
 	
 	hChild = (HWND)SendMessage(hMDIClient, WM_MDICREATE, 0, (LONG)&mcs);
 	if (!hChild)
@@ -302,7 +259,6 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam){
 
 //Window Procedure para el hijo
 LRESULT CALLBACK MDIChildWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam){
-	static HINSTANCE hInstance;
 
 	switch (msg){
 	case WM_CREATE: {
@@ -310,9 +266,9 @@ LRESULT CALLBACK MDIChildWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
 		HFONT hfDefault;
 		HWND hEdit, hListbox, hButtonAdd, hButtonDel;
 		HWND hBtnProm, hTextProm, hBtnMediana, hTextMediana, hBtnModa, hTextModa, hBtnDAM, hTextDAM,
-			hBtnVarianza, hTextVarianza, hBtnStandard, hTextStandard, hBtnGrafica;
+			hBtnVarianza, hTextVarianza, hBtnStandard, hTextStandard;
 
-		hfDefault = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
+		hfDefault = (HFONT)GetStockObject(DEFAULT_PALETTE);
 		
 		//Create ListBox Control
 		hListbox = CreateWindowEx(0, "LISTBOX", "",
@@ -442,14 +398,6 @@ LRESULT CALLBACK MDIChildWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
 			MessageBox(hwnd, "Puede que no se haya creado la etiqueta Standard", "Error", MB_OK | MB_ICONERROR);
 		SendMessage(hTextStandard, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
 
-		//Create Button Grafica de Cuartiles
-		hBtnGrafica = CreateWindowEx(0, "BUTTON", "Grafica d/Cuartiles",
-			WS_CHILD | WS_VISIBLE | BS_CENTER | WS_TABSTOP,
-			170, 300, 100, 25, hwnd, (HMENU)IDC_BUTTON_GRAFICA, GetModuleHandle(NULL), NULL);
-		if (hBtnGrafica == NULL)
-			MessageBox(hwnd, "Puede que no se haya creado el button Standard", "Error", MB_OK | MB_ICONERROR);
-		SendMessage(hBtnGrafica, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
-
 		if (dataEditDialog != NULL) {
 			//Se envian los datos del dialogo al ListBox
 			putAListBox(hListbox, dataEditDialog);
@@ -458,8 +406,24 @@ LRESULT CALLBACK MDIChildWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
 		}
 
 	}break;
-	case WM_MDIACTIVATE: {
+	/*case WM_ACTIVATE: {
 		HMENU hMenu, hFileMenu;
+		UINT EnableFlag;
+
+		hMenu = GetMenu(g_hMainWindow);
+		if (hwnd == (HWND)lParam) {
+			//being activated, enable the menus
+			EnableFlag = MF_ENABLED;
+		}
+		else {
+			//being de-activated, gray the menus
+			EnableFlag = MF_GRAYED;
+		}
+		hFileMenu = GetSubMenu(hMenu, 0);
+		EnableMenuItem(hFileMenu, ID_OPCIONES_GRAFICA, MF_BYCOMMAND | EnableFlag);
+	}break;*/
+	case WM_MDIACTIVATE: {
+		HMENU hMenu, hFileMenu, hOptionMenu;
 		UINT EnableFlag;
 
 		hMenu = GetMenu(g_hMainWindow);
@@ -475,27 +439,16 @@ LRESULT CALLBACK MDIChildWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
 		EnableMenuItem(hMenu, 2, MF_BYPOSITION | EnableFlag);
 
 		hFileMenu = GetSubMenu(hMenu, 0);
-		EnableMenuItem(hFileMenu, ID_ARCHIVO_GUARDAR, MF_BYCOMMAND | EnableFlag);
-
 		EnableMenuItem(hFileMenu, ID_ARCHIVO_CERRAR, MF_BYCOMMAND | EnableFlag);
 		EnableMenuItem(hFileMenu, ID_ARCHIVO_CERRARTODO, MF_BYCOMMAND | EnableFlag);
 
+		hOptionMenu = GetSubMenu(hMenu, 1);
+		EnableMenuItem(hOptionMenu, ID_OPCIONES_GRAFICA, MF_BYCOMMAND | EnableFlag);
+
 		DrawMenuBar(g_hMainWindow);
 	}break;
-	/*case WM_SIZE: {
-		HWND hEdit;
-		RECT rcClient;
-
-		GetClientRect(hwnd, &rcClient);
-
-		hEdit = GetDlgItem(hwnd, IDC_EDITBOX);
-		SetWindowPos(hEdit, NULL, 0, 0, rcClient.right, rcClient.bottom, SWP_NOZORDER);
-	}break;*/
 	case WM_COMMAND: {
 		switch (LOWORD(wParam)) {
-		case ID_ARCHIVO_GUARDAR: {
-			DoFileSave(hwnd);
-		}break;
 		case IDC_BUTTON_ADD: {
 
 			HWND hEdit;
@@ -532,12 +485,10 @@ LRESULT CALLBACK MDIChildWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
 					for (i = count - 1; i >= 0; i--)
 						SendMessage(hList, LB_DELETESTRING, (WPARAM)buf[i], 0);
 					GlobalFree(buf);
-				}
-				else {
+				}else {
 					MessageBox(hwnd, "Items no seleccionado", "Warning", MB_OK);
 				}
-			}
-			else {
+			}else {
 				MessageBox(hwnd, "Error contando items :(", "Warning", MB_OK);
 			}
 		}break;
@@ -747,6 +698,81 @@ LRESULT CALLBACK MDIChildWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
 	return 0;
 }
 
+//Window Procedure para la grafica (Toda la creacion de la grafica)
+LRESULT CALLBACK WinGraficProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+
+	switch (msg) {
+	case WM_CREATE: {
+		HFONT hfDefault;
+		HWND hListbox;
+
+		hfDefault = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
+
+		//Aqui el listbox es creado para transferir los datos de la ventana seleccionada
+		//Puedes borrar    WS_VISIBLE   para hacerlo invisible
+		hListbox = CreateWindowEx(0, "LISTBOX", "",
+			WS_CHILD | WS_VISIBLE | LBS_NOINTEGRALHEIGHT | LBS_EXTENDEDSEL | WS_TABSTOP,
+			10, 10, 150, 315, hwnd, (HMENU)IDC_LISTBOX_EDIT, GetModuleHandle(NULL), NULL);
+		if (hListbox == NULL)
+			MessageBox(hwnd, "Puede que no se haya creado la lista", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(hListbox, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		//Aqui se agregan los datos al list box
+		int all = SendMessage(hListGlobal, LB_GETCOUNT, 0, 0);
+		//LB_GETCOUNT cuenta la cantidad de items de la lista
+		if (all != LB_ERR) {
+			for (int i = 0; i < all; i++) {
+				int range = SendMessage(hListGlobal, LB_GETTEXTLEN, (WPARAM)i, 0);
+				//LB_GETTEXTLEN toma la longitud del texto
+				LPSTR text = (LPSTR)GlobalAlloc(GPTR, range + 1);
+				//Aloja memoria para el texto completo
+				SendMessage(hListGlobal, LB_GETTEXT, (WPARAM)i, (LPARAM)text);
+				//LB_GETTEXT toma el texto en el indice -i- y lo guarda en -text-
+				SendDlgItemMessage(hwnd, IDC_LISTBOX_EDIT, LB_ADDSTRING, 0, (LPARAM)text);
+				GlobalFree(text);
+				//Libero la memoria
+			}
+		}
+		//Despues de esto ya puedes crear la grafica :b
+
+
+
+
+
+	}break;
+	case WM_MDIACTIVATE: {
+		HMENU hMenu, hFileMenu, hOptionsMenu;
+		UINT EnableFlag;
+
+		hMenu = GetMenu(g_hMainWindow);
+		if (hwnd == (HWND)lParam) {
+			//being activated, enable the menus
+			EnableFlag = MF_ENABLED;
+		}else {
+			//being de-activated, gray the menus
+			EnableFlag = MF_GRAYED;
+		}
+
+		EnableMenuItem(hMenu, 1, MF_BYPOSITION | EnableFlag);
+		EnableMenuItem(hMenu, 2, MF_BYPOSITION | EnableFlag);
+
+		hFileMenu = GetSubMenu(hMenu, 0);
+
+		EnableMenuItem(hFileMenu, ID_ARCHIVO_CERRAR, MF_BYCOMMAND | EnableFlag);
+		EnableMenuItem(hFileMenu, ID_ARCHIVO_CERRARTODO, MF_BYCOMMAND | EnableFlag);
+
+		hOptionsMenu = GetSubMenu(hMenu, 1);
+
+		EnableMenuItem(hOptionsMenu, ID_OPCIONES_GRAFICA, MF_BYCOMMAND | MF_GRAYED);
+
+		DrawMenuBar(g_hMainWindow);
+	}break;
+	default:
+		return DefMDIChildProc(hwnd, msg, wParam, lParam);
+	}
+	return 0;
+}
+
 // Window Procedure para el padre
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam){
 	switch (msg){
@@ -770,11 +796,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam){
 		case ID_ARCHIVO_NUEVO: {
 			//codigo para Archivo/Nuevo
 			DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(ID_DIALOG_OPEN), hwnd, DlgProc);
-			CreateNewMDIChild(g_hMDIClient);
+			CreateNewMDIChild(g_hMDIClient, 1);
 		}break;
 		case ID_ARCHIVO_ABRIR: {
 			//Codigo para archivo/Abrir
-			HWND hChild = CreateNewMDIChild(g_hMDIClient);
+			HWND hChild = CreateNewMDIChild(g_hMDIClient, 1);
 			if (hChild)
 			{
 				DoFileOpen(hChild);
@@ -783,17 +809,15 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam){
 		case ID_ARCHIVO_CERRAR: {
 			//Codigo para Archivo/Cerrar
 			HWND hChild = (HWND)SendMessage(g_hMDIClient, WM_MDIGETACTIVE, 0, 0);
-			if (hChild)
-			{
+			if (hChild){
 				SendMessage(hChild, WM_CLOSE, 0, 0);
 			}
 		}break;
-		case IDC_BUTTON_GRAFICA: {
-			//Codigo para la ventana Grafica de los datos (Creada en el MDI)
-
-
-
-
+			case ID_OPCIONES_GRAFICA: {
+				//Codigo para la ventana Grafica de los datos (Creada en el MDI)
+				HWND hChild = (HWND)SendMessage(g_hMDIClient, WM_MDIGETACTIVE, 0, 0);
+				hListGlobal = GetDlgItem(hChild, IDC_LISTBOX_EDIT);
+				CreateNewMDIChild(g_hMDIClient, 2);
 		}break;
 		case ID_OPCIONES_CASCADA:
 			SendMessage(g_hMDIClient, WM_MDICASCADE, 0, 0);
@@ -852,6 +876,33 @@ BOOL SetUpMDIChildWindowClass(HINSTANCE hInstance){
 		return TRUE;
 }
 
+//Creacion de la clase ventana Grafica
+BOOL SetUpMDIGraficWindowClass(HINSTANCE hInstance) {
+
+	WNDCLASSEX wc;
+
+	wc.cbSize = sizeof(WNDCLASSEX);
+	wc.style = 0;
+	wc.lpfnWndProc = WinGraficProc;
+	wc.cbClsExtra = 0;
+	wc.cbWndExtra = 0;
+	wc.hInstance = hInstance;
+	wc.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+	wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+	wc.hbrBackground = (HBRUSH)(COLOR_3DFACE + 1);
+	wc.lpszMenuName = NULL;
+	wc.lpszClassName = g_szGraficClassName;
+	wc.hIconSm = LoadIcon(NULL, IDI_APPLICATION);
+
+	if (!RegisterClassEx(&wc)) {
+		MessageBox(0, "Puede que no se haya registrado la ventana para la Grafica", "Oh Oh...",
+			MB_ICONEXCLAMATION | MB_OK);
+		return FALSE;
+	}
+	else
+		return TRUE;
+}
+
 //Creacion de la ventana padre
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	LPSTR lpCmdLine, int nCmdShow){
@@ -882,6 +933,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	}
 
 	if (!SetUpMDIChildWindowClass(hInstance))
+		return 0;
+	if (!SetUpMDIGraficWindowClass(hInstance))
 		return 0;
 
 	// Step 2: Creating the Window
