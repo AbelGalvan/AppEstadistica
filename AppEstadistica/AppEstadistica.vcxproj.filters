@@ -30,7 +30,7 @@
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="icon1.ico">
+    <Image Include="holi.ico">
       <Filter>Archivos de recursos</Filter>
     </Image>
   </ItemGroup>

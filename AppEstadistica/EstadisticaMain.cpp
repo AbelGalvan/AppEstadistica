@@ -1,8 +1,10 @@
 #include <windows.h>
 #include <CommCtrl.h>
 #include <stdlib.h>
+#include <fstream>
 #include <math.h>
 #include "resource.h"
+using namespace std;
 
 const char g_szClassName[] = "myWindowClass";
 char g_szChildClassName[] = "myChildrenClass";
@@ -202,13 +204,13 @@ HWND CreateNewMDIChild(HWND hMDIClient, int tipo){
 		mcs.style = MDIS_ALLCHILDSTYLES;
 	}
 	else if (2==tipo) {
-		mcs.szTitle = "Diagrama de Bigotes";
+		mcs.szTitle = "Distribucion de Frecuencias";
 		mcs.szClass = g_szGraficClassName;
 		mcs.hOwner = GetModuleHandle(NULL);
 		mcs.x = CW_USEDEFAULT;
 		mcs.y = CW_USEDEFAULT;
-		mcs.cx = 410;
-		mcs.cy = 380;
+		mcs.cx = 730;
+		mcs.cy = 530;
 		mcs.style = MDIS_ALLCHILDSTYLES;
 	}
 	
@@ -262,7 +264,6 @@ LRESULT CALLBACK MDIChildWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
 
 	switch (msg){
 	case WM_CREATE: {
-		
 		HFONT hfDefault;
 		HWND hEdit, hListbox, hButtonAdd, hButtonDel;
 		HWND hBtnProm, hTextProm, hBtnMediana, hTextMediana, hBtnModa, hTextModa, hBtnDAM, hTextDAM,
@@ -272,8 +273,8 @@ LRESULT CALLBACK MDIChildWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
 		
 		//Create ListBox Control
 		hListbox = CreateWindowEx(0, "LISTBOX", "",
-			WS_CHILD | WS_VISIBLE | LBS_NOINTEGRALHEIGHT | LBS_EXTENDEDSEL | WS_TABSTOP,
-			10, 10, 150, 315, hwnd, (HMENU)IDC_LISTBOX_EDIT, GetModuleHandle(NULL), NULL);
+			WS_CHILD | WS_VISIBLE | LBS_NOINTEGRALHEIGHT | LBS_EXTENDEDSEL | WS_TABSTOP | WS_VSCROLL | WS_HSCROLL,
+			10, 10, 150, 1000, hwnd, (HMENU)IDC_LISTBOX_EDIT, GetModuleHandle(NULL), NULL);
 		if (hListbox == NULL)
 			MessageBox(hwnd, "Puede que no se haya creado la lista", "Error", MB_OK | MB_ICONERROR);
 		SendMessage(hListbox, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
@@ -440,7 +441,7 @@ LRESULT CALLBACK MDIChildWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
 
 		hFileMenu = GetSubMenu(hMenu, 0);
 		EnableMenuItem(hFileMenu, ID_ARCHIVO_CERRAR, MF_BYCOMMAND | EnableFlag);
-		EnableMenuItem(hFileMenu, ID_ARCHIVO_CERRARTODO, MF_BYCOMMAND | EnableFlag);
+		EnableMenuItem(hFileMenu, ID_ARCHIVO_GUARDAR, MF_BYCOMMAND | EnableFlag);
 
 		hOptionMenu = GetSubMenu(hMenu, 1);
 		EnableMenuItem(hOptionMenu, ID_OPCIONES_GRAFICA, MF_BYCOMMAND | EnableFlag);
@@ -701,44 +702,573 @@ LRESULT CALLBACK MDIChildWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
 //Window Procedure para la grafica (Toda la creacion de la grafica)
 LRESULT CALLBACK WinGraficProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 
+	HDC hDC;
+	PAINTSTRUCT ps;
+
 	switch (msg) {
 	case WM_CREATE: {
 		HFONT hfDefault;
-		HWND hListbox;
+		HWND hListbox, hEtiquetaH, hArreglo;
+		HWND htext1, htext2, htext3, htext4, htext5, htext6, htext7, htext8, htext9, htext10, htext11, htext12;
+		HWND htext13, htext14, htext15, htext16, htext17, htext18, htext19, htext20, htext21, htext22, htext23;
+		HWND htext24, htext25, htext26, htext27, htext28, htext29, htext30;
+		HWND hcant1, hcant2, hcant3, hcant4, hcant5, hcant6, hcant7, hcant8, hcant9, hcant10;
+		HWND hEtiqAbajo, hEtiqIz1, hEtiqIz2, hEtiqIz3, hEtiqIz4, hEtiqIz5, hEtiqIz6, hEtiqIz7, hEtiqIz8;
 
-		hfDefault = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
+		hfDefault = (HFONT)GetStockObject(DEFAULT_PALETTE);
 
+		//Etiquetas de Ayuda
 		//Aqui el listbox es creado para transferir los datos de la ventana seleccionada
-		//Puedes borrar    WS_VISIBLE   para hacerlo invisible
 		hListbox = CreateWindowEx(0, "LISTBOX", "",
-			WS_CHILD | WS_VISIBLE | LBS_NOINTEGRALHEIGHT | LBS_EXTENDEDSEL | WS_TABSTOP,
+			WS_CHILD | LBS_NOINTEGRALHEIGHT | LBS_EXTENDEDSEL | WS_TABSTOP,
 			10, 10, 150, 315, hwnd, (HMENU)IDC_LISTBOX_EDIT, GetModuleHandle(NULL), NULL);
 		if (hListbox == NULL)
 			MessageBox(hwnd, "Puede que no se haya creado la lista", "Error", MB_OK | MB_ICONERROR);
 		SendMessage(hListbox, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+		//ListBox usado como arreglo
+		hArreglo = CreateWindowEx(0, "LISTBOX", "",
+			WS_CHILD | LBS_NOINTEGRALHEIGHT | LBS_EXTENDEDSEL | WS_TABSTOP,
+			200, 10, 150, 315, hwnd, (HMENU)IDC_ARREGLO, GetModuleHandle(NULL), NULL);
+		if (hArreglo == NULL)
+			MessageBox(hwnd, "Puede que no se haya creado la lista del arreglo", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(hArreglo, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+		//Etiqueta de ayuda
+		hEtiquetaH = CreateWindowEx(0, "STATIC", "nada",
+			WS_CHILD | WS_TABSTOP,
+			300, 10, 50, 30, hwnd, (HMENU)IDC_TEXT_AYUDA, GetModuleHandle(NULL), NULL);
+		if (hEtiquetaH == NULL)
+			MessageBox(hwnd, "Puede que no se haya creado la etiqueta ayuda", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(hEtiquetaH, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		//Etiquetas para diseño
+		htext1 = CreateWindowEx(0, "STATIC", "-",
+			WS_CHILD | WS_TABSTOP,
+			50, 700, 50, 30, hwnd, (HMENU)ID_TEXT1, GetModuleHandle(NULL), NULL);
+		if (htext1 == NULL)
+			MessageBox(hwnd, "Etiqueta 1 -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(htext1, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		htext2 = CreateWindowEx(0, "STATIC", "a",
+			WS_CHILD | WS_TABSTOP,
+			50, 700, 50, 30, hwnd, (HMENU)ID_TEXT2, GetModuleHandle(NULL), NULL);
+		if (htext2 == NULL)
+			MessageBox(hwnd, "Etiqueta 2 -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(htext2, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		htext3 = CreateWindowEx(0, "STATIC", "-",
+			WS_CHILD | WS_TABSTOP,
+			50, 700, 50, 30, hwnd, (HMENU)ID_TEXT3, GetModuleHandle(NULL), NULL);
+		if (htext3 == NULL)
+			MessageBox(hwnd, "Etiqueta 3 -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(htext3, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		htext4 = CreateWindowEx(0, "STATIC", "-",
+			WS_CHILD | WS_TABSTOP,
+			50, 700, 50, 30, hwnd, (HMENU)ID_TEXT4, GetModuleHandle(NULL), NULL);
+		if (htext4 == NULL)
+			MessageBox(hwnd, "Etiqueta 4 -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(htext4, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		htext5 = CreateWindowEx(0, "STATIC", "a",
+			WS_CHILD | WS_TABSTOP,
+			50, 700, 50, 30, hwnd, (HMENU)ID_TEXT5, GetModuleHandle(NULL), NULL);
+		if (htext5 == NULL)
+			MessageBox(hwnd, "Etiqueta 5 -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(htext5, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		htext6 = CreateWindowEx(0, "STATIC", "-",
+			WS_CHILD | WS_TABSTOP,
+			50, 700, 50, 30, hwnd, (HMENU)ID_TEXT6, GetModuleHandle(NULL), NULL);
+		if (htext6 == NULL)
+			MessageBox(hwnd, "Etiqueta 6 -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(htext6, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		htext7 = CreateWindowEx(0, "STATIC", "-",
+			WS_CHILD | WS_TABSTOP,
+			50, 700, 50, 30, hwnd, (HMENU)ID_TEXT7, GetModuleHandle(NULL), NULL);
+		if (htext7 == NULL)
+			MessageBox(hwnd, "Etiqueta 7 -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(htext7, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		htext8 = CreateWindowEx(0, "STATIC", "a",
+			WS_CHILD | WS_TABSTOP,
+			50, 700, 50, 30, hwnd, (HMENU)ID_TEXT8, GetModuleHandle(NULL), NULL);
+		if (htext8 == NULL)
+			MessageBox(hwnd, "Etiqueta 8 -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(htext8, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		htext9 = CreateWindowEx(0, "STATIC", "-",
+			WS_CHILD | WS_TABSTOP,
+			50, 700, 50, 30, hwnd, (HMENU)ID_TEXT9, GetModuleHandle(NULL), NULL);
+		if (htext9 == NULL)
+			MessageBox(hwnd, "Etiqueta 9 -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(htext9, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		htext10 = CreateWindowEx(0, "STATIC", "-",
+			WS_CHILD | WS_TABSTOP,
+			50, 700, 50, 30, hwnd, (HMENU)ID_TEXT10, GetModuleHandle(NULL), NULL);
+		if (htext10 == NULL)
+			MessageBox(hwnd, "Etiqueta 10 -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(htext10, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		htext11 = CreateWindowEx(0, "STATIC", "a",
+			WS_CHILD | WS_TABSTOP,
+			50, 700, 50, 30, hwnd, (HMENU)ID_TEXT11, GetModuleHandle(NULL), NULL);
+		if (htext11 == NULL)
+			MessageBox(hwnd, "Etiqueta 11 -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(htext11, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		htext12 = CreateWindowEx(0, "STATIC", "-",
+			WS_CHILD | WS_TABSTOP,
+			50, 700, 50, 30, hwnd, (HMENU)ID_TEXT12, GetModuleHandle(NULL), NULL);
+		if (htext12 == NULL)
+			MessageBox(hwnd, "Etiqueta 12 -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(htext12, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		htext13 = CreateWindowEx(0, "STATIC", "-",
+			WS_CHILD | WS_TABSTOP,
+			50, 700, 50, 30, hwnd, (HMENU)ID_TEXT13, GetModuleHandle(NULL), NULL);
+		if (htext13 == NULL)
+			MessageBox(hwnd, "Etiqueta 13 -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(htext13, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		htext14 = CreateWindowEx(0, "STATIC", "a",
+			WS_CHILD | WS_TABSTOP,
+			50, 700, 50, 30, hwnd, (HMENU)ID_TEXT14, GetModuleHandle(NULL), NULL);
+		if (htext14 == NULL)
+			MessageBox(hwnd, "Etiqueta 14 -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(htext14, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		htext15 = CreateWindowEx(0, "STATIC", "-",
+			WS_CHILD | WS_TABSTOP,
+			50, 700, 50, 30, hwnd, (HMENU)ID_TEXT15, GetModuleHandle(NULL), NULL);
+		if (htext15 == NULL)
+			MessageBox(hwnd, "Etiqueta 15 -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(htext15, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		htext16 = CreateWindowEx(0, "STATIC", "-",
+			WS_CHILD | WS_TABSTOP,
+			50, 700, 50, 30, hwnd, (HMENU)ID_TEXT16, GetModuleHandle(NULL), NULL);
+		if (htext16 == NULL)
+			MessageBox(hwnd, "Etiqueta 16 -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(htext16, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		htext17 = CreateWindowEx(0, "STATIC", "a",
+			WS_CHILD | WS_TABSTOP,
+			50, 700, 50, 30, hwnd, (HMENU)ID_TEXT17, GetModuleHandle(NULL), NULL);
+		if (htext17 == NULL)
+			MessageBox(hwnd, "Etiqueta 17 -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(htext17, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		htext18 = CreateWindowEx(0, "STATIC", "-",
+			WS_CHILD | WS_TABSTOP,
+			50, 700, 50, 30, hwnd, (HMENU)ID_TEXT18, GetModuleHandle(NULL), NULL);
+		if (htext18 == NULL)
+			MessageBox(hwnd, "Etiqueta 18 -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(htext18, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		htext19 = CreateWindowEx(0, "STATIC", "-",
+			WS_CHILD | WS_TABSTOP,
+			50, 700, 50, 30, hwnd, (HMENU)ID_TEXT19, GetModuleHandle(NULL), NULL);
+		if (htext19 == NULL)
+			MessageBox(hwnd, "Etiqueta 19 -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(htext19, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		htext20 = CreateWindowEx(0, "STATIC", "a",
+			WS_CHILD | WS_TABSTOP,
+			50, 700, 50, 30, hwnd, (HMENU)ID_TEXT20, GetModuleHandle(NULL), NULL);
+		if (htext20 == NULL)
+			MessageBox(hwnd, "Etiqueta 20 -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(htext20, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		htext21 = CreateWindowEx(0, "STATIC", "-",
+			WS_CHILD | WS_TABSTOP,
+			50, 700, 50, 30, hwnd, (HMENU)ID_TEXT21, GetModuleHandle(NULL), NULL);
+		if (htext21 == NULL)
+			MessageBox(hwnd, "Etiqueta 21 -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(htext21, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		htext22 = CreateWindowEx(0, "STATIC", "-",
+			WS_CHILD | WS_TABSTOP,
+			50, 700, 50, 30, hwnd, (HMENU)ID_TEXT22, GetModuleHandle(NULL), NULL);
+		if (htext22 == NULL)
+			MessageBox(hwnd, "Etiqueta 22 -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(htext22, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		htext23 = CreateWindowEx(0, "STATIC", "a",
+			WS_CHILD | WS_TABSTOP,
+			50, 700, 50, 30, hwnd, (HMENU)ID_TEXT23, GetModuleHandle(NULL), NULL);
+		if (htext23 == NULL)
+			MessageBox(hwnd, "Etiqueta 23 -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(htext23, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		htext24 = CreateWindowEx(0, "STATIC", "-",
+			WS_CHILD | WS_TABSTOP,
+			50, 700, 50, 30, hwnd, (HMENU)ID_TEXT24, GetModuleHandle(NULL), NULL);
+		if (htext24 == NULL)
+			MessageBox(hwnd, "Etiqueta 24 -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(htext24, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		htext25 = CreateWindowEx(0, "STATIC", "-",
+			WS_CHILD | WS_TABSTOP,
+			50, 700, 50, 30, hwnd, (HMENU)ID_TEXT25, GetModuleHandle(NULL), NULL);
+		if (htext25 == NULL)
+			MessageBox(hwnd, "Etiqueta 25 -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(htext25, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		htext26 = CreateWindowEx(0, "STATIC", "a",
+			WS_CHILD | WS_TABSTOP,
+			50, 700, 50, 30, hwnd, (HMENU)ID_TEXT26, GetModuleHandle(NULL), NULL);
+		if (htext26 == NULL)
+			MessageBox(hwnd, "Etiqueta 26 -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(htext26, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		htext27 = CreateWindowEx(0, "STATIC", "-",
+			WS_CHILD | WS_TABSTOP,
+			50, 700, 50, 30, hwnd, (HMENU)ID_TEXT27, GetModuleHandle(NULL), NULL);
+		if (htext27 == NULL)
+			MessageBox(hwnd, "Etiqueta 27 -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(htext27, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		htext28 = CreateWindowEx(0, "STATIC", "-",
+			WS_CHILD | WS_TABSTOP,
+			50, 700, 50, 30, hwnd, (HMENU)ID_TEXT28, GetModuleHandle(NULL), NULL);
+		if (htext28 == NULL)
+			MessageBox(hwnd, "Etiqueta 28 -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(htext28, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		htext29 = CreateWindowEx(0, "STATIC", "a",
+			WS_CHILD | WS_TABSTOP,
+			50, 700, 50, 30, hwnd, (HMENU)ID_TEXT29, GetModuleHandle(NULL), NULL);
+		if (htext29 == NULL)
+			MessageBox(hwnd, "Etiqueta 29 -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(htext29, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		htext30 = CreateWindowEx(0, "STATIC", "-",
+			WS_CHILD | WS_TABSTOP,
+			50, 700, 50, 30, hwnd, (HMENU)ID_TEXT30, GetModuleHandle(NULL), NULL);
+		if (htext30 == NULL)
+			MessageBox(hwnd, "Etiqueta 30 -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(htext30, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		//Etiquetas para las cantidades de los intervalos
+		hcant1 = CreateWindowEx(0, "STATIC", "-",
+			WS_CHILD | WS_TABSTOP,
+			50, 700, 50, 30, hwnd, (HMENU)ID_CANT1, GetModuleHandle(NULL), NULL);
+		if (hcant1 == NULL)
+			MessageBox(hwnd, "Etiqueta cant1 -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(hcant1, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		hcant2 = CreateWindowEx(0, "STATIC", "-",
+			WS_CHILD | WS_TABSTOP,
+			50, 700, 50, 30, hwnd, (HMENU)ID_CANT2, GetModuleHandle(NULL), NULL);
+		if (hcant2 == NULL)
+			MessageBox(hwnd, "Etiqueta cant2 -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(hcant2, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		hcant3 = CreateWindowEx(0, "STATIC", "-",
+			WS_CHILD | WS_TABSTOP,
+			50, 700, 50, 30, hwnd, (HMENU)ID_CANT3, GetModuleHandle(NULL), NULL);
+		if (hcant3 == NULL)
+			MessageBox(hwnd, "Etiqueta cant3 -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(hcant3, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		hcant4 = CreateWindowEx(0, "STATIC", "-",
+			WS_CHILD | WS_TABSTOP,
+			50, 700, 50, 30, hwnd, (HMENU)ID_CANT4, GetModuleHandle(NULL), NULL);
+		if (hcant4 == NULL)
+			MessageBox(hwnd, "Etiqueta cant4 -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(hcant4, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		hcant5 = CreateWindowEx(0, "STATIC", "-",
+			WS_CHILD | WS_TABSTOP,
+			50, 700, 50, 30, hwnd, (HMENU)ID_CANT5, GetModuleHandle(NULL), NULL);
+		if (hcant5 == NULL)
+			MessageBox(hwnd, "Etiqueta cant5 -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(hcant5, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		hcant6 = CreateWindowEx(0, "STATIC", "-",
+			WS_CHILD | WS_TABSTOP,
+			50, 700, 50, 30, hwnd, (HMENU)ID_CANT6, GetModuleHandle(NULL), NULL);
+		if (hcant6 == NULL)
+			MessageBox(hwnd, "Etiqueta cant6 -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(hcant6, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		hcant7 = CreateWindowEx(0, "STATIC", "-",
+			WS_CHILD | WS_TABSTOP,
+			50, 700, 50, 30, hwnd, (HMENU)ID_CANT7, GetModuleHandle(NULL), NULL);
+		if (hcant7 == NULL)
+			MessageBox(hwnd, "Etiqueta cant7 -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(hcant7, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		hcant8 = CreateWindowEx(0, "STATIC", "-",
+			WS_CHILD | WS_TABSTOP,
+			50, 700, 50, 30, hwnd, (HMENU)ID_CANT8, GetModuleHandle(NULL), NULL);
+		if (hcant8 == NULL)
+			MessageBox(hwnd, "Etiqueta cant8 -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(hcant8, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		hcant9 = CreateWindowEx(0, "STATIC", "-",
+			WS_CHILD | WS_TABSTOP,
+			50, 700, 50, 30, hwnd, (HMENU)ID_CANT9, GetModuleHandle(NULL), NULL);
+		if (hcant9 == NULL)
+			MessageBox(hwnd, "Etiqueta cant9 -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(hcant9, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		hcant10 = CreateWindowEx(0, "STATIC", "-",
+			WS_CHILD | WS_TABSTOP,
+			50, 700, 50, 30, hwnd, (HMENU)ID_CANT10, GetModuleHandle(NULL), NULL);
+		if (hcant10 == NULL)
+			MessageBox(hwnd, "Etiqueta cant10 -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(hcant10, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		//Etiqueta de Abajo
+		hEtiqAbajo = CreateWindowEx(0, "STATIC", "I N T E R V A L O S",
+			WS_CHILD | WS_VISIBLE | WS_TABSTOP,
+			300, 450, 150, 15, hwnd, (HMENU)ID_STATICABAJO, GetModuleHandle(NULL), NULL);
+		if (hEtiqAbajo == NULL)
+			MessageBox(hwnd, "Etiqueta statica abajo -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(hEtiqAbajo, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		//Etiquetas de Izquierda
+		hEtiqIz1 = CreateWindowEx(0, "STATIC", "#",
+			WS_CHILD | WS_VISIBLE | WS_TABSTOP,
+			25, 100, 15, 15, hwnd, (HMENU)ID_STATICIZ1, GetModuleHandle(NULL), NULL);
+		if (hEtiqIz1 == NULL)
+			MessageBox(hwnd, "Etiqueta statica izquierda -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(hEtiqIz1, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		hEtiqIz2 = CreateWindowEx(0, "STATIC", "D",
+			WS_CHILD | WS_VISIBLE | WS_TABSTOP,
+			25, 140, 20, 15, hwnd, (HMENU)ID_STATICIZ2, GetModuleHandle(NULL), NULL);
+		if (hEtiqIz2 == NULL)
+			MessageBox(hwnd, "Etiqueta statica izquierda -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(hEtiqIz2, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		hEtiqIz3 = CreateWindowEx(0, "STATIC", "E",
+			WS_CHILD | WS_VISIBLE | WS_TABSTOP,
+			25, 160, 20, 15, hwnd, (HMENU)ID_STATICIZ3, GetModuleHandle(NULL), NULL);
+		if (hEtiqIz3 == NULL)
+			MessageBox(hwnd, "Etiqueta statica izquierda -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(hEtiqIz3, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		hEtiqIz4 = CreateWindowEx(0, "STATIC", "I",
+			WS_CHILD | WS_VISIBLE | WS_TABSTOP,
+			25, 200, 20, 15, hwnd, (HMENU)ID_STATICIZ4, GetModuleHandle(NULL), NULL);
+		if (hEtiqIz4 == NULL)
+			MessageBox(hwnd, "Etiqueta statica izquierda -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(hEtiqIz4, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		hEtiqIz5 = CreateWindowEx(0, "STATIC", "T",
+			WS_CHILD | WS_VISIBLE | WS_TABSTOP,
+			25, 220, 20, 15, hwnd, (HMENU)ID_STATICIZ5, GetModuleHandle(NULL), NULL);
+		if (hEtiqIz5 == NULL)
+			MessageBox(hwnd, "Etiqueta statica izquierda -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(hEtiqIz5, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		hEtiqIz6 = CreateWindowEx(0, "STATIC", "E",
+			WS_CHILD | WS_VISIBLE | WS_TABSTOP,
+			25, 240, 20, 15, hwnd, (HMENU)ID_STATICIZ6, GetModuleHandle(NULL), NULL);
+		if (hEtiqIz6 == NULL)
+			MessageBox(hwnd, "Etiqueta statica izquierda -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(hEtiqIz6, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		hEtiqIz7 = CreateWindowEx(0, "STATIC", "M",
+			WS_CHILD | WS_VISIBLE | WS_TABSTOP,
+			25, 260, 20, 15, hwnd, (HMENU)ID_STATICIZ7, GetModuleHandle(NULL), NULL);
+		if (hEtiqIz7 == NULL)
+			MessageBox(hwnd, "Etiqueta statica izquierda -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(hEtiqIz7, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
+
+		hEtiqIz8 = CreateWindowEx(0, "STATIC", "S",
+			WS_CHILD | WS_VISIBLE | WS_TABSTOP,
+			25, 280, 20, 15, hwnd, (HMENU)ID_STATICIZ8, GetModuleHandle(NULL), NULL);
+		if (hEtiqIz8 == NULL)
+			MessageBox(hwnd, "Etiqueta statica izquierda -problema-", "Error", MB_OK | MB_ICONERROR);
+		SendMessage(hEtiqIz8, WM_SETFONT, (WPARAM)hfDefault, MAKELPARAM(FALSE, 0));
 
 		//Aqui se agregan los datos al list box
 		int all = SendMessage(hListGlobal, LB_GETCOUNT, 0, 0);
-		//LB_GETCOUNT cuenta la cantidad de items de la lista
 		if (all != LB_ERR) {
 			for (int i = 0; i < all; i++) {
 				int range = SendMessage(hListGlobal, LB_GETTEXTLEN, (WPARAM)i, 0);
-				//LB_GETTEXTLEN toma la longitud del texto
 				LPSTR text = (LPSTR)GlobalAlloc(GPTR, range + 1);
-				//Aloja memoria para el texto completo
 				SendMessage(hListGlobal, LB_GETTEXT, (WPARAM)i, (LPARAM)text);
-				//LB_GETTEXT toma el texto en el indice -i- y lo guarda en -text-
 				SendDlgItemMessage(hwnd, IDC_LISTBOX_EDIT, LB_ADDSTRING, 0, (LPARAM)text);
 				GlobalFree(text);
-				//Libero la memoria
 			}
 		}
-		//Despues de esto ya puedes crear la grafica :b
 
+		int n = SendMessage(hListbox, LB_GETCOUNT, 0, 0);
+		if (n != LB_ERR) {
+			//agrega el primer item para maximo y minimo
+			int range = SendMessage(hListbox, LB_GETTEXTLEN, 0, 0);
+			LPSTR text = (LPSTR)GlobalAlloc(GPTR, range + 1);
+			SendMessage(hListbox, LB_GETTEXT, 0, (LPARAM)text);
+			int maxim = atoi(text);
+			int minim = atoi(text);
+			GlobalFree(text);
 
+			for (int i = 0; i < n; i++) {
+				range = SendMessage(hListbox, LB_GETTEXTLEN, (WPARAM)i, 0);
+				text = (LPSTR)GlobalAlloc(GPTR, range + 1);
+				SendMessage(hListbox, LB_GETTEXT, (WPARAM)i, (LPARAM)text);
+				int numer = atoi(text);
+				if (maxim < numer) {
+					maxim = numer;
+				}
+				if (minim > numer) {
+					minim = numer;
+				}
+				GlobalFree(text);
+			}
+			float rango = maxim - minim;
+			int numInterv = round(1 + 3.333*log10(n));
+			int amplitud = ceil(rango / numInterv);
 
+			int acum = minim;
+			int cont;
+			//Agrega la cantidad de datos por barra a la lista Arreglo
+			for (int j = 0; j < numInterv; j++) {
+				cont = 0;
+				for (int i = 0; i < n; i++) {
+					range = SendMessage(hListbox, LB_GETTEXTLEN, (WPARAM)i, 0);
+					text = (LPSTR)GlobalAlloc(GPTR, range + 1);
+					SendMessage(hListbox, LB_GETTEXT, (WPARAM)i, (LPARAM)text);
+					int numero = atoi(text);
+					GlobalFree(text);
+					if ((numero >= acum) && (numero < (acum + amplitud))) {
+						cont++;
+					}
+				}
+				//Escriben los textos de las etiquetas para las amplitudes
+				int idInicio=ID_TEXT1+j*3, idFinal=ID_TEXT3+j*3;
+				SetDlgItemInt(hwnd, idInicio, acum, false);
+				SetDlgItemInt(hwnd, idFinal, acum+amplitud-1, false);
+				//Se agregan la cantidad  de datos por barra en cada etiqueta de la barra
+				int idBarra = ID_CANT1+j;
+				SetDlgItemInt(hwnd, idBarra, cont, false);
 
+				acum += amplitud;
+				LPSTR txtArreglo = itoa(cont, 10);
+				//Aqui se agregan los valores al arreglo
+				SendDlgItemMessage(hwnd, IDC_ARREGLO, LB_ADDSTRING, 0, (LPARAM)txtArreglo);
+			}
+		}
+		else {
+			MessageBox(hwnd, "Error select items", "Warning", MB_OK);
+		}
+	}break;
+	case WM_SIZE: {
+		HWND hArreglo = GetDlgItem(hwnd, IDC_ARREGLO);
 
+		int n = SendMessage(hArreglo, LB_GETCOUNT, 0, 0);
+		if (n != LB_ERR) {
+
+			int range = SendMessage(hArreglo, LB_GETTEXTLEN, 0, 0);
+			LPSTR text = (LPSTR)GlobalAlloc(GPTR, range + 1);
+			SendMessage(hArreglo, LB_GETTEXT, 0, (LPARAM)text);
+			int maximo = atoi(text);
+			GlobalFree(text);
+
+			for (int i = 0; i < n; i++) {
+				range = SendMessage(hArreglo, LB_GETTEXTLEN, (WPARAM)i, 0);
+				text = (LPSTR)GlobalAlloc(GPTR, range + 1);
+				SendMessage(hArreglo, LB_GETTEXT, (WPARAM)i, (LPARAM)text);
+				int numer = atoi(text);
+				if (maximo < numer) {
+					maximo = numer;
+				}
+				GlobalFree(text);
+			}
+			float demas = maximo / 5;
+			if (demas < 1) {demas = 1;}
+			SetDlgItemInt(hwnd, IDC_TEXT_AYUDA, demas, false);
+			int total = ceil(maximo + demas);
+			int altura = 400 / total;
+			int largo = 600 / n;
+			int base = 0;
+			for (int i = 0; i < n; i++) {
+				range = SendMessage(hArreglo, LB_GETTEXTLEN, (WPARAM)i, 0);
+				text = (LPSTR)GlobalAlloc(GPTR, range + 1);
+				SendMessage(hArreglo, LB_GETTEXT, (WPARAM)i, (LPARAM)text);
+				int num = atoi(text);
+				GlobalFree(text);
+				//Posicion y visibilidad de las etiquetas
+				int idText1 = ID_TEXT1 + i * 3;
+				int idText2 = ID_TEXT2 + i * 3;
+				int idText3 = ID_TEXT3 + i * 3;
+				int idBarra = ID_CANT1 + i;
+				HWND text1 = GetDlgItem(hwnd, idText1);
+				HWND text2 = GetDlgItem(hwnd, idText2);
+				HWND text3 = GetDlgItem(hwnd, idText3);
+				HWND barra = GetDlgItem(hwnd, idBarra);
+				SetWindowPos(text1, HWND_TOP, 0 + base + largo, 420, 15, 15, SWP_SHOWWINDOW);
+				SetWindowPos(text2, HWND_TOP, 20 + base + largo, 420, 15, 15, SWP_SHOWWINDOW);
+				SetWindowPos(text3, HWND_TOP, 40 + base + largo, 420, 15, 15, SWP_SHOWWINDOW);
+				SetWindowPos(barra, HWND_TOP, 65, 400 - altura * num, 15, 15, SWP_SHOWWINDOW);
+				base += largo;
+			}
+			UpdateWindow(hwnd);
+		}
+		else {
+			MessageBox(hwnd, "Error select items x2 :'v", "Warning", MB_OK);
+		}
+	}break;
+	case WM_PAINT: {
+		hDC = BeginPaint(hwnd, &ps);
+		HWND hArreglo = GetDlgItem(hwnd, IDC_ARREGLO);
+		//Rectangulo mayor y el pintor
+		Rectangle(hDC, 90, 10, 691, 410);
+		CONST LOGBRUSH palette = { BS_SOLID, COLORREF(RGB(0,100,255)) , 0 };
+		HBRUSH pincel = CreateBrushIndirect(&palette);
+		if (pincel == NULL) {
+			MessageBox(hwnd, "Error para crear el pincel :'v", "Warning", MB_OK);
+		}
+		SelectObject(hDC, pincel);
+
+		int n = SendMessage(hArreglo, LB_GETCOUNT, 0, 0);
+		if (n != LB_ERR) {
+
+			int range = SendMessage(hArreglo, LB_GETTEXTLEN, 0, 0);
+			LPSTR text = (LPSTR)GlobalAlloc(GPTR, range + 1);
+			SendMessage(hArreglo, LB_GETTEXT, 0, (LPARAM)text);
+			int maximo = atoi(text);
+			GlobalFree(text);
+
+			for (int i = 0; i < n; i++) {
+				range = SendMessage(hArreglo, LB_GETTEXTLEN, (WPARAM)i, 0);
+				text = (LPSTR)GlobalAlloc(GPTR, range + 1);
+				SendMessage(hArreglo, LB_GETTEXT, (WPARAM)i, (LPARAM)text);
+				int numer = atoi(text);
+				if (maximo < numer) {
+					maximo = numer;
+				}
+				GlobalFree(text);
+			}
+			float demas = maximo / 5;
+			if (demas < 1) { demas = 1; }
+			SetDlgItemInt(hwnd, IDC_TEXT_AYUDA, demas, false);
+			int total = ceil(maximo + demas);
+			int altura = 400 / total;
+			int largo = 600 / n;
+			int base = 0;
+			for (int i = 0; i < n; i++) {
+				range = SendMessage(hArreglo, LB_GETTEXTLEN, (WPARAM)i, 0);
+				text = (LPSTR)GlobalAlloc(GPTR, range + 1);
+				SendMessage(hArreglo, LB_GETTEXT, (WPARAM)i, (LPARAM)text);
+				int num = atoi(text);
+				GlobalFree(text);
+				//Dibujos de los Rectangulos;
+				Rectangle(hDC, 90 + base, 410 - altura * num, 91 + base + largo, 411);
+				base += largo;
+			}
+		}
+		else {
+			MessageBox(hwnd, "Error select items x2 :'v", "Warning", MB_OK);
+		}
+		DeleteObject(pincel);
+		EndPaint(hwnd, &ps);
 	}break;
 	case WM_MDIACTIVATE: {
 		HMENU hMenu, hFileMenu, hOptionsMenu;
@@ -748,7 +1278,8 @@ LRESULT CALLBACK WinGraficProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam
 		if (hwnd == (HWND)lParam) {
 			//being activated, enable the menus
 			EnableFlag = MF_ENABLED;
-		}else {
+		}
+		else {
 			//being de-activated, gray the menus
 			EnableFlag = MF_GRAYED;
 		}
@@ -759,7 +1290,7 @@ LRESULT CALLBACK WinGraficProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam
 		hFileMenu = GetSubMenu(hMenu, 0);
 
 		EnableMenuItem(hFileMenu, ID_ARCHIVO_CERRAR, MF_BYCOMMAND | EnableFlag);
-		EnableMenuItem(hFileMenu, ID_ARCHIVO_CERRARTODO, MF_BYCOMMAND | EnableFlag);
+		EnableMenuItem(hFileMenu, ID_ARCHIVO_GUARDAR, MF_BYCOMMAND | MF_GRAYED);
 
 		hOptionsMenu = GetSubMenu(hMenu, 1);
 
@@ -775,7 +1306,7 @@ LRESULT CALLBACK WinGraficProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam
 
 // Window Procedure para el padre
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam){
-	switch (msg){
+	switch (msg) {
 	case WM_CREATE: {
 		CLIENTCREATESTRUCT ccs;
 
@@ -789,10 +1320,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam){
 		if (g_hMDIClient == NULL) {
 			MessageBox(hwnd, "Puede que no se haya creado el Cliente MDI", "Error", MB_OK | MB_ICONERROR);
 		}
-	}
-		break;
+	}break;
 	case WM_COMMAND: {
-		switch (LOWORD(wParam)){
+		switch (LOWORD(wParam)) {
 		case ID_ARCHIVO_NUEVO: {
 			//codigo para Archivo/Nuevo
 			DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(ID_DIALOG_OPEN), hwnd, DlgProc);
@@ -809,34 +1339,58 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam){
 		case ID_ARCHIVO_CERRAR: {
 			//Codigo para Archivo/Cerrar
 			HWND hChild = (HWND)SendMessage(g_hMDIClient, WM_MDIGETACTIVE, 0, 0);
-			if (hChild){
+			if (hChild) {
 				SendMessage(hChild, WM_CLOSE, 0, 0);
 			}
 		}break;
-			case ID_OPCIONES_GRAFICA: {
-				//Codigo para la ventana Grafica de los datos (Creada en el MDI)
-				HWND hChild = (HWND)SendMessage(g_hMDIClient, WM_MDIGETACTIVE, 0, 0);
-				hListGlobal = GetDlgItem(hChild, IDC_LISTBOX_EDIT);
-				CreateNewMDIChild(g_hMDIClient, 2);
+		case ID_ARCHIVO_GUARDAR: {
+			HWND hChild = (HWND)SendMessage(g_hMDIClient, WM_MDIGETACTIVE, 0, 0);
+			HWND hList = GetDlgItem(hChild, IDC_LISTBOX_EDIT);
+			ofstream archivo;
+			archivo.open("DatosGuardados.txt");
+			int all = SendMessage(hList, LB_GETCOUNT, 0, 0);
+			if (all != LB_ERR) {
+				float total = 0;
+				for (int i = 0; i < all; i++) {
+					int range = SendMessage(hList, LB_GETTEXTLEN, (WPARAM)i, 0);
+					LPSTR text = (LPSTR)GlobalAlloc(GPTR, range + 1);
+					SendMessage(hList, LB_GETTEXT, (WPARAM)i, (LPARAM)text);
+					int num = atoi(text);
+					archivo << num << endl;
+					GlobalFree(text);
+				}
+			}
+			else {
+				MessageBox(hwnd, "Error select items", "Warning", MB_OK);
+			}
 		}break;
-		case ID_OPCIONES_CASCADA:
+		case ID_OPCIONES_GRAFICA: {
+			//Codigo para la ventana Grafica de los datos (Creada en el MDI)
+			HWND hChild = (HWND)SendMessage(g_hMDIClient, WM_MDIGETACTIVE, 0, 0);
+			hListGlobal = GetDlgItem(hChild, IDC_LISTBOX_EDIT);
+			CreateNewMDIChild(g_hMDIClient, 2);
+		}break;
+		case ID_OPCIONES_CASCADA: {
 			SendMessage(g_hMDIClient, WM_MDICASCADE, 0, 0);
-			break;
+		}break;
+		case ID_INFORMACION: {
+			MessageBox(hwnd, "Paul Vitela Payan\nAbel Galvan Enriquez", "Desarrolladores", MB_OK);
+		}break;
 		case ID_SALIR: {
 			PostMessage(hwnd, WM_CLOSE, 0, 0);
 		}break;
 		default: {
-			if (LOWORD(wParam) >= ID_MDI_FIRSTCHILD){
+			if (LOWORD(wParam) >= ID_MDI_FIRSTCHILD) {
 				DefFrameProc(hwnd, g_hMDIClient, WM_COMMAND, wParam, lParam);
-			}else{
+			}
+			else {
 				HWND hChild = (HWND)SendMessage(g_hMDIClient, WM_MDIGETACTIVE, 0, 0);
 				if (hChild)
 					SendMessage(hChild, WM_COMMAND, wParam, lParam);
 			}
 		}
 		}
-	}
-		break;
+	}break;
 	case WM_CLOSE: {
 		DestroyWindow(hwnd);
 	}break;
@@ -845,8 +1399,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam){
 	}break;
 	default:
 		return DefFrameProc(hwnd, g_hMDIClient, msg, wParam, lParam);
-	}
 	return 0;
+	}
 }
 
 //Creacion de la clase ventana Child
@@ -863,7 +1417,7 @@ BOOL SetUpMDIChildWindowClass(HINSTANCE hInstance){
 	wc.hInstance = hInstance;
 	wc.hIcon = LoadIcon(NULL, IDI_APPLICATION);
 	wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-	wc.hbrBackground = (HBRUSH)(COLOR_3DFACE + 1);
+	wc.hbrBackground = (HBRUSH)GetSysColorBrush(COLOR_3DFACE);
 	wc.lpszMenuName = NULL;
 	wc.lpszClassName = g_szChildClassName;
 	wc.hIconSm = LoadIcon(NULL, IDI_APPLICATION);
@@ -889,7 +1443,7 @@ BOOL SetUpMDIGraficWindowClass(HINSTANCE hInstance) {
 	wc.hInstance = hInstance;
 	wc.hIcon = LoadIcon(NULL, IDI_APPLICATION);
 	wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-	wc.hbrBackground = (HBRUSH)(COLOR_3DFACE + 1);
+	wc.hbrBackground = (HBRUSH)GetSysColorBrush(COLOR_3DFACE);
 	wc.lpszMenuName = NULL;
 	wc.lpszClassName = g_szGraficClassName;
 	wc.hIconSm = LoadIcon(NULL, IDI_APPLICATION);
